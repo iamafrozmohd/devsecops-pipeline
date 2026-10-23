@@ -1,0 +1,13 @@
+# Checkov configuration. Every skipped check has a written justification:
+# a skip is a documented risk decision, not a way to make the pipeline green.
+compact: true
+quiet: true
+skip-check:
+  # Customer-managed keys: Microsoft-managed keys plus infrastructure (double) encryption
+  # are enabled. CMK adds Key Vault and key-rotation overhead that this demo doesn't need.
+  - CKV2_AZURE_1
+  # Private endpoint: public network access is disabled outright. In a real deployment the
+  # private endpoint would live in the shared networking module, not this storage module.
+  - CKV2_AZURE_33
+  # Queue service logging: this account stores blobs only and has no queues.
+  - CKV_AZURE_33
