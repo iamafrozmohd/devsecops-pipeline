@@ -1,6 +1,8 @@
 # Hardened container for the hash-lookup API.
 # - small Alpine base, pinned to a specific Python minor version (never "latest")
 # - dependencies installed without cache, OS packages upgraded at build time
+# - pip and setuptools removed after install: no package manager at runtime, and their
+#   bundled libraries (urllib3, msgpack) were flagged HIGH by the Trivy image scan
 # - runs as an unprivileged user, read-only friendly, with a health check
 FROM python:3.13-alpine
 
@@ -16,8 +18,8 @@ RUN apk upgrade --no-cache \
     && adduser -S -G app -H -s /sbin/nologin app
 
 COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+RUN pip install -r requirements.txt \
+    && pip uninstall -y pip setuptools wheel
 
 COPY --chown=root:root __init__.py app.py ./app/
 
