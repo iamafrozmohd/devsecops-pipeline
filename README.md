@@ -46,10 +46,27 @@ push / PR
 - TLS 1.2 minimum, HTTPS only, infrastructure (double) encryption
 - **No public access and no shared keys**: anonymous blob access off, shared-key auth off, Entra ID auth by default, public network access disabled, firewall default-deny
 - SAS tokens limited to 1 day, blob versioning and 14-day soft delete for ransomware/accidental-delete recovery
+- **Audit logging**: every blob read, write and delete is sent to a Log Analytics workspace (90-day retention) through a diagnostic setting
 - Geo-redundant replication
 
+## What the pipeline caught
+The very first run failed two security gates, and both findings were fixed in code, not suppressed:
+
+| Gate | Finding | Fix |
+|---|---|---|
+| Trivy image scan | 4 HIGH CVEs (urllib3, msgpack, setuptools). None were in the app's own dependencies: they came from **pip's bundled libraries** in the Python base image | Removed pip and setuptools from the final image. The app never needs them at runtime, and an attacker who got a shell couldn't install tools with them either |
+| Checkov | `CKV2_AZURE_21`: blob read requests were not being logged, so data access would leave no audit trail | Added a diagnostic setting that ships `StorageRead`, `StorageWrite` and `StorageDelete` logs to Log Analytics |
+
+After those fixes, every stage passes. The OWASP ZAP scan of the running container reports **67 checks passed, 0 failures and 1 warning**: "Non-Storable Content", which is expected because the API deliberately sends `Cache-Control: no-store` so responses are never cached by browsers or proxies. The full HTML report is attached to each run as the `zap-report` artifact.
+
 ## Risk acceptance, not silent skips
-Three Checkov policies are skipped, each with a written justification in [`.checkov.yaml`](.checkov.yaml): customer-managed keys (Microsoft-managed keys plus double encryption are used instead), private endpoints (public access is fully disabled, and the endpoint would live in a networking module), and queue logging (the account has no queues). In a real team these would go through a risk-acceptance review rather than being quietly suppressed.
+Four Checkov policies are skipped, each with a written justification in [`.checkov.yaml`](.checkov.yaml):
+- **Customer-managed keys:** Microsoft-managed keys plus double encryption are used instead.
+- **Private endpoint:** public access is fully disabled, and the endpoint would live in a networking module.
+- **Queue logging:** the account has no queues.
+- **Blob logging (`CKV2_AZURE_21`):** the policy only recognizes the legacy Storage Insights method, which requires shared access keys, and those are disabled on purpose. The same logging is implemented with a diagnostic setting instead (a compensating control).
+
+In a real team these would go through a risk-acceptance review rather than being quietly suppressed.
 
 ## Run it locally
 ```bash
