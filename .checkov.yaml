@@ -11,3 +11,8 @@ skip-check:
   - CKV2_AZURE_33
   # Queue service logging: this account stores blobs only and has no queues.
   - CKV_AZURE_33
+  # Blob read logging: this policy only recognises the legacy Storage Insights method, which
+  # needs a shared access key, and shared keys are disabled on purpose. Blob read, write and
+  # delete logging is implemented instead with a diagnostic setting that sends StorageRead,
+  # StorageWrite and StorageDelete logs to Log Analytics (see azurerm_monitor_diagnostic_setting).
+  - CKV2_AZURE_21
